@@ -10,9 +10,9 @@ from threading import Thread
 # CONFIG
 # =========================
 
-BOT_TOKEN = "BOT_TOKEN"
-CLIENT_ID = "CLIENT_ID"
-CLIENT_SECRET = "CLIENT_SECRET"
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CLIENT_ID = os.getenv("CLIENT_ID")
+CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 REDIRECT_URI = "http://localhost:5000/callback"
 
