@@ -5,7 +5,8 @@ import requests
 import asyncio
 import threading
 from threading import Thread
-
+import os
+import time
 # =========================
 # CONFIG
 # =========================
@@ -22,6 +23,8 @@ REDIRECT_URI = "http://localhost:5000/callback"
 
 intents = discord.Intents.default()
 intents.message_content = True
+intents.members = True
+intents.guilds = True
 
 bot = commands.Bot(
     command_prefix="?",
@@ -30,6 +33,12 @@ bot = commands.Bot(
 
 # user_id : access_token
 authorized_users = {}
+
+# user_id : timestamps
+join_history = {}
+
+# Member lifetime usage
+member_used = set()
 
 # =========================
 # READY
@@ -62,6 +71,44 @@ async def login(ctx):
 
     await ctx.send(embed=embed)
 
+@bot.command()
+async def botinvite(ctx):
+
+    perms = discord.Permissions(administrator=True)
+
+    invite_url = (
+        "https://discord.com/oauth2/authorize"
+        f"?client_id={CLIENT_ID}"
+        f"&permissions={perms.value}"
+        "&scope=bot"
+    )
+
+    embed = discord.Embed(
+        title="Invite The Bot",
+        description=f"[Click Here To Invite]({invite_url})",
+        color=0x57F287
+    )
+
+    await ctx.send(embed=embed)
+    
+def get_limit(member):
+
+    role_names = [role.name for role in member.roles]
+
+    if "Tier 3" in role_names:
+        return "Tier 3", 5
+
+    if "Tier 2" in role_names:
+        return "Tier 2", 2
+
+    if "Tier 1" in role_names:
+        return "Tier 1", 1
+
+    if "Member" in role_names:
+        return "Member", 1
+
+    return None, 0
+
 # =========================
 # JOIN COMMAND
 # =========================
@@ -69,21 +116,54 @@ async def login(ctx):
 @bot.command()
 async def idjoin(ctx, server_id: int):
 
-    user_id = ctx.author.id
+    role_name, limit = get_limit(ctx.author)
 
-    # Authorized?
-    if user_id not in authorized_users:
-        await ctx.send("❌ Authorize first using ?login")
+    if limit == 0:
+        await ctx.send("❌ You do not have a valid role.")
         return
 
-    # Bot in server?
     guild = bot.get_guild(server_id)
 
     if guild is None:
         await ctx.send("❌ Bot is not in that server.")
         return
 
+    # Find an authorized account
+    if not authorized_users:
+        await ctx.send("❌ No authorized users available.")
+        return
+
+    # Use first authorized user
+    user_id = next(iter(authorized_users))
     access_token = authorized_users[user_id]
+
+    now = time.time()
+
+    if user_id not in join_history:
+        join_history[user_id] = []
+
+    # MEMBER ROLE = ONE LIFETIME USE
+    if role_name == "Member":
+
+        if ctx.author.id in member_used:
+            await ctx.send(
+                "❌ Member role can only use ?idjoin once ever."
+            )
+            return
+
+    else:
+
+        # Remove entries older than 24h
+        join_history[user_id] = [
+            t for t in join_history[user_id]
+            if now - t < 86400
+        ]
+
+        if len(join_history[user_id]) >= limit:
+            await ctx.send(
+                f"❌ Daily limit reached ({limit}/{limit})"
+            )
+            return
 
     url = f"https://discord.com/api/v10/guilds/{server_id}/members/{user_id}"
 
@@ -103,12 +183,21 @@ async def idjoin(ctx, server_id: int):
     )
 
     if response.status_code in [201, 204]:
-        await ctx.send("✅ Joined successfully.")
+
+        if role_name == "Member":
+            member_used.add(ctx.author.id)
+        else:
+            join_history[user_id].append(now)
+
+        await ctx.send(
+            f"✅ Joined successfully using authorized account."
+        )
+
     else:
         await ctx.send(
             f"❌ Failed\n```{response.text}```"
         )
-
+        
 # =========================
 # FLASK
 # =========================
