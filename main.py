@@ -2,7 +2,8 @@ import discord
 from discord.ext import commands
 from flask import Flask, request
 import requests
-import threading
+import asyncio
+from threading import Thread
 
 # =========================
 # CONFIG
@@ -182,4 +183,18 @@ threading.Thread(target=run_flask).start()
 # START BOT
 # =========================
 
-bot.run(BOT_TOKEN)
+# Instead of: bot.run(BOT_TOKEN)
+
+async def run_bot():
+    await bot.start(BOT_TOKEN)
+
+def start_bot_thread():
+    asyncio.run(run_bot())
+
+# Start bot in a background thread
+bot_thread = Thread(target=start_bot_thread, daemon=True)
+bot_thread.start()
+
+# Then run Flask normally
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
