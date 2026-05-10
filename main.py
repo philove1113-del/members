@@ -289,7 +289,7 @@ def callback():
 def run_flask():
     app.run(
         host="0.0.0.0",
-        port=5000
+        port=8080
     )
 
 threading.Thread(target=run_flask).start()
