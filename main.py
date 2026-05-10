@@ -366,13 +366,11 @@ def run_web():
         web,
         host="0.0.0.0",
         port=PORT
+        threads=8
     )
 
 # Start web server in background thread
-web_thread = Thread(
-    target=run_web,
-    daemon=True
-)
+web_thread = Thread(target=run_web)
 
 web_thread.start()
 
