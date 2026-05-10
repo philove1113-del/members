@@ -323,17 +323,10 @@ async def restock_task():
 # START BOT
 # =========================
 def start_bot_background():
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        async def run_bot():
-            await bot.start(BOT_TOKEN)
-        
-        asyncio.run_coroutine_threadsafe(run_bot(), loop)
-        loop.run_forever()
-    except Exception as e:
-        print(f"Bot error: {e}")
+ try:
+ asyncio.run(bot.start(BOT_TOKEN))
+ except Exception as e:
+ print(f"Bot error: {e}")
 
 # Start bot in background thread (non-blocking)
 try:
