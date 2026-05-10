@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from flask import Flask, request, render_template
+from flask import Flask, request
 import requests
 import asyncio
 from threading import Thread
@@ -339,7 +339,16 @@ def run_bot():
     asyncio.run(bot.start(BOT_TOKEN))
 
 if __name__ == "__main__":
-    bot_thread = Thread(target=run_bot, daemon=True)
+
+    print("Starting bot thread...")
+
+    bot_thread = Thread(target=run_bot)
     bot_thread.start()
+
     print(f"Starting Waitress on port {PORT}")
-    serve(app, host="0.0.0.0", port=PORT)
+
+    serve(
+        app,
+        host="0.0.0.0",
+        port=PORT
+    )
