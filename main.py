@@ -329,3 +329,11 @@ def start_bot_background():
         loop.run_until_complete(bot.start(BOT_TOKEN))
     except Exception as e:
         print(f"Bot error: {e}")
+        
+# Start bot in background thread
+bot_thread = Thread(target=start_bot_background, daemon=True)
+bot_thread.start()
+
+# Start Flask
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
