@@ -365,7 +365,7 @@ def run_web():
     serve(
         web,
         host="0.0.0.0",
-        port=PORT
+        port=PORT,
         threads=8
     )
 
