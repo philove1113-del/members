@@ -329,27 +329,12 @@ async def restock_task():
 # START BOT + FLASK
 # =========================
 
-def run_flask():
+def run_bot():
+    asyncio.run(bot.start(BOT_TOKEN))
+
+if __name__ == "__main__":
+    bot_thread = Thread(target=run_bot, daemon=True)
+    bot_thread.start()
+    
     PORT = int(os.environ.get("PORT", 8080))
-    try:
-        serve(app, host="0.0.0.0", port=PORT)
-    except Exception as e:
-        print(f"Flask error: {e}")
-
-async def main():
-
-    # Start Flask in background
-    flask_thread = Thread(
-        target=run_flask,
-        daemon=True
-    )
-
-    flask_thread.start()
-
-    # Start Discord bot
-    await bot.start(BOT_TOKEN)
-
-# Start everything
-asyncio.run(main())
-
-
+    serve(app, host="0.0.0.0", port=PORT)
