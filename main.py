@@ -322,35 +322,20 @@ async def restock_task():
 # =========================
 # START BOT
 # =========================
-loop = None
-bot_thread = None
-bot_started = False
-
-def start_bot():
-    global loop, bot_thread, bot_started
-    if bot_started:
-        return
-    bot_started = True
-    
-    loop = asyncio.new_event_loop()
-    
-    async def run_bot():
-        await bot.start(BOT_TOKEN)
-    
-    def run_loop():
+def start_bot_background():
+    try:
+        loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
-        loop.run_forever()
-    
-    bot_thread = Thread(target=run_loop, daemon=True)
-    bot_thread.start()
-    
-    time.sleep(0.1)
-    asyncio.run_coroutine_threadsafe(run_bot(), loop)
+        
+        async def run_bot():
+            await bot.start(BOT_TOKEN)
+        
+        loop.run_until_complete(run_bot())
+    except Exception as e:
+        print(f"Bot error: {e}")
 
-# Start bot in background thread on first request
-@app.before_request
-def before_first_request():
-    Thread(target=start_bot, daemon=True).start()
+bot_thread = Thread(target=start_bot_background, daemon=True)
+bot_thread.start()
 
 if __name__ == '__main__':
     pass
