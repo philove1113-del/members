@@ -332,9 +332,16 @@ def start_bot_thread():
     asyncio.run(run_bot())
 
 # Start bot in a background thread
-bot_thread = Thread(target=start_bot_thread, daemon=True)
+bot_thread = Thread(target=start_bot_thread, daemon=False)
 bot_thread.start()
 
+# Keep main thread alive for gunicorn
+try:
+    while True:
+        time.sleep(1)
+except KeyboardInterrupt:
+    pass
+    
 if __name__ == '__main__':
     # This line is needed for gunicorn to find the app
     pass
