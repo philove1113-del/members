@@ -57,6 +57,40 @@ join_history = {}
 member_used = set()
 
 # =========================
+# RESTOCK TASK
+# =========================
+
+@tasks.loop(minutes=1)
+async def restock_task():
+    timezone = pytz.timezone("America/Los_Angeles")
+    now = datetime.now(timezone)
+
+    if now.hour == 7 and now.minute == 30:
+
+        channel = bot.get_channel(RESTOCK_CHANNEL_ID)
+        if channel is None:
+            return
+
+        stock_count = len(authorized_users)
+
+        embed = discord.Embed(
+            title="Restock",
+            description=(
+                f"The bot has restocked.\n\n"
+                f"**{stock_count}** authorized members are now available.\n\n"
+                f"React to this message for more restocks."
+            ),
+            color=0x57F287
+        )
+
+        embed.set_footer(text="Automatic Daily Restock")
+
+        message = await channel.send(embed=embed)
+        await message.add_reaction("✅")
+
+        await asyncio.sleep(60)
+        
+# =========================
 # READY
 # =========================
 
