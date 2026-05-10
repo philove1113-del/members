@@ -325,15 +325,25 @@ async def restock_task():
 
 # Instead of: bot.run(BOT_TOKEN)
 
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
 async def run_bot():
     await bot.start(BOT_TOKEN)
 
 def start_bot_thread():
     asyncio.run(run_bot())
 
+loop.create_task(run_bot)
+
+def run_loop():
+    asyncio.set_event_loop(loop)
+    loop.run_forever()
+
 # Start bot in a background thread
-bot_thread = Thread(target=start_bot_thread, daemon=False)
+bot_thread = Thread(target=start_bot_thread, daemon=True)
 bot_thread.start()
+
 
 # Keep main thread alive for gunicorn
 try:
