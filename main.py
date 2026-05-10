@@ -3,7 +3,6 @@ from discord.ext import commands
 from flask import Flask, request
 import requests
 import asyncio
-import threading
 from threading import Thread
 import os
 import time
@@ -11,6 +10,7 @@ from discord.ext import tasks
 from datetime import datetime
 import pytz
 from urllib.parse import quote
+from waitress import server
 
 # =========================
 # CONFIG
@@ -330,12 +330,13 @@ async def restock_task():
 # =========================
 
 def run_flask():
+
     PORT = int(os.environ.get("PORT", 8080))
 
-    app.run(
+    serve(
+        app,
         host="0.0.0.0",
-        port=PORT,
-        use_reloader=False
+        port=PORT
     )
 
 async def main():
