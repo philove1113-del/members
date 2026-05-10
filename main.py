@@ -237,13 +237,7 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    try:
-        return render_template("index.html")
-    except Exception as e:
-        print(f"Error in home: {e}")
-        import traceback
-        traceback.print_exc()
-        return f"Error: {e}", 500
+    return "Bot Running"
 
 @app.route("/health")
 def health():
