@@ -306,52 +306,8 @@ def callback():
 
     authorized_users[user_id] = access_token
 
-    return """
-    <h1>Authorized Successfully</h1>
-    You may now use ?idjoin SERVER_ID
-    """
-
-# =========================
-# RESTOCK TASK
-# =========================
-
-@tasks.loop(minutes=1)
-async def restock_task():
-
-    timezone = pytz.timezone("America/Los_Angeles")
-    now = datetime.now(timezone)
-
-    # 7:30 AM PDT/PST
-    if now.hour == 7 and now.minute == 30:
-
-        channel = bot.get_channel(RESTOCK_CHANNEL_ID)
-
-        if channel is None:
-            return
-
-        stock_count = len(authorized_users)
-
-        embed = discord.Embed(
-            title="Restock",
-            description=(
-                f"The bot has restocked.\n\n"
-                f"**{stock_count}** authorized members are now available.\n\n"
-                f"React to this message for more restocks."
-            ),
-            color=0x57F287
-        )
-
-        embed.set_footer(
-            text="Automatic Daily Restock"
-        )
-
-        message = await channel.send(embed=embed)
-
-        await message.add_reaction("✅")
-
-        # Prevent duplicate sends
-        await asyncio.sleep(60)
-
+    return "Authorized Successfully"
+    
 # =========================
 # START WEB SERVER
 # =========================
