@@ -1,16 +1,13 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from flask import Flask, request
 import requests
 from threading import Thread
 import os
 import time
-from discord.ext import tasks
 from datetime import datetime
 import pytz
 from urllib.parse import quote
-from waitress import serve
-import asyncio
 
 # =========================
 # CONFIG
@@ -21,16 +18,12 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 REDIRECT_URI = "https://members-production-ea8f.up.railway.app/callback"
-
-ENCODED_REDIRECT_URI = quote(
-    REDIRECT_URI,
-    safe=""
-)
+ENCODED_REDIRECT_URI = quote(REDIRECT_URI, safe="")
 
 RESTOCK_CHANNEL_ID = 1502766892186861568
 
 # =========================
-# INTENTS
+# DISCORD BOT
 # =========================
 
 intents = discord.Intents.default()
@@ -38,22 +31,14 @@ intents.message_content = True
 intents.members = True
 intents.guilds = True
 
-bot = commands.Bot(
-    command_prefix="?",
-    intents=intents
-)
+bot = commands.Bot(command_prefix="?", intents=intents)
 
 # =========================
 # STORAGE
 # =========================
 
-# user_id : access_token
-authorized_users = {}
-
-# user_id : timestamps
-join_history = {}
-
-# Member lifetime usage
+authorized_users = {}   # user_id -> access_token
+join_history = {}        # user_id -> timestamps
 member_used = set()
 
 # =========================
@@ -62,56 +47,44 @@ member_used = set()
 
 @tasks.loop(minutes=1)
 async def restock_task():
-    timezone = pytz.timezone("America/Los_Angeles")
-    now = datetime.now(timezone)
+    now = datetime.now(pytz.timezone("America/Los_Angeles"))
 
     if now.hour == 7 and now.minute == 30:
 
         channel = bot.get_channel(RESTOCK_CHANNEL_ID)
-        if channel is None:
+        if not channel:
             return
-
-        stock_count = len(authorized_users)
 
         embed = discord.Embed(
             title="Restock",
             description=(
                 f"The bot has restocked.\n\n"
-                f"**{stock_count}** authorized members are now available.\n\n"
-                f"React to this message for more restocks."
+                f"**{len(authorized_users)}** authorized members available.\n\n"
+                f"React for updates."
             ),
             color=0x57F287
         )
 
-        embed.set_footer(text="Automatic Daily Restock")
+        msg = await channel.send(embed=embed)
+        await msg.add_reaction("✅")
 
-        message = await channel.send(embed=embed)
-        await message.add_reaction("✅")
-
-        await asyncio.sleep(60)
-        
 # =========================
-# READY
+# READY EVENT
 # =========================
 
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
-
-    try:
-        if not restock_task.is_running():
-            restock_task.start()
-    except NameError:
-        print("restock_task not loaded yet")
+    if not restock_task.is_running():
+        restock_task.start()
 
 # =========================
-# LOGIN COMMAND
+# COMMANDS
 # =========================
 
 @bot.command()
 async def login(ctx):
-
-    oauth_url = (
+    url = (
         "https://discord.com/oauth2/authorize"
         f"?client_id={CLIENT_ID}"
         f"&redirect_uri={ENCODED_REDIRECT_URI}"
@@ -121,61 +94,45 @@ async def login(ctx):
 
     embed = discord.Embed(
         title="Authorize",
-        description=f"[Click Here]({oauth_url})",
+        description=f"[Click Here]({url})",
         color=0x5865F2
     )
 
     await ctx.send(embed=embed)
 
-# =========================
-# BOT INVITE COMMAND
-# =========================
 
 @bot.command()
 async def botinvite(ctx):
-
     perms = discord.Permissions(administrator=True)
 
-    invite_url = (
+    url = (
         "https://discord.com/oauth2/authorize"
         f"?client_id={CLIENT_ID}"
         f"&permissions={perms.value}"
         "&scope=bot"
     )
 
-    embed = discord.Embed(
-        title="Invite The Bot",
-        description=f"[Click Here To Invite]({invite_url})",
+    await ctx.send(embed=discord.Embed(
+        title="Invite Bot",
+        description=f"[Click Here]({url})",
         color=0x57F287
-    )
+    ))
 
-    await ctx.send(embed=embed)
-
-# =========================
-# ROLE LIMITS
-# =========================
 
 def get_limit(member):
+    roles = [r.name for r in member.roles]
 
-    role_names = [role.name for role in member.roles]
-
-    if "Tier 3" in role_names:
+    if "Tier 3" in roles:
         return "Tier 3", 5
-
-    if "Tier 2" in role_names:
+    if "Tier 2" in roles:
         return "Tier 2", 2
-
-    if "Tier 1" in role_names:
+    if "Tier 1" in roles:
         return "Tier 1", 1
-
-    if "Member" in role_names:
+    if "Member" in roles:
         return "Member", 1
 
     return None, 0
 
-# =========================
-# JOIN COMMAND
-# =========================
 
 @bot.command()
 async def idjoin(ctx, server_id: int):
@@ -183,176 +140,122 @@ async def idjoin(ctx, server_id: int):
     role_name, limit = get_limit(ctx.author)
 
     if limit == 0:
-        await ctx.send("❌ You do not have a valid role.")
-        return
-
-    guild = bot.get_guild(server_id)
-
-    if guild is None:
-        await ctx.send("❌ Bot is not in that server.")
-        return
+        return await ctx.send("❌ No valid role.")
 
     if not authorized_users:
-        await ctx.send("❌ No authorized users available.")
-        return
+        return await ctx.send("❌ No authorized users.")
 
-    # Use first authorized user
     user_id = next(iter(authorized_users))
-    access_token = authorized_users[user_id]
+    token = authorized_users[user_id]
 
     now = time.time()
+    join_history.setdefault(user_id, [])
 
-    if user_id not in join_history:
-        join_history[user_id] = []
-
-    # Member role = one lifetime use
     if role_name == "Member":
-
         if ctx.author.id in member_used:
-            await ctx.send(
-                "❌ Member role can only use ?idjoin once ever."
-            )
-            return
-
+            return await ctx.send("❌ One-time use only.")
     else:
-
-        # Remove entries older than 24h
-        join_history[user_id] = [
-            t for t in join_history[user_id]
-            if now - t < 86400
-        ]
+        join_history[user_id] = [t for t in join_history[user_id] if now - t < 86400]
 
         if len(join_history[user_id]) >= limit:
-            await ctx.send(
-                f"❌ Daily limit reached ({limit}/{limit})"
-            )
-            return
+            return await ctx.send("❌ Daily limit reached.")
 
     url = f"https://discord.com/api/v10/guilds/{server_id}/members/{user_id}"
 
-    headers = {
-        "Authorization": f"Bot {BOT_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    data = {
-        "access_token": access_token
-    }
-
-    response = requests.put(
+    res = requests.put(
         url,
-        headers=headers,
-        json=data
+        headers={
+            "Authorization": f"Bot {BOT_TOKEN}",
+            "Content-Type": "application/json"
+        },
+        json={"access_token": token}
     )
 
-    if response.status_code in [201, 204]:
-
+    if res.status_code in (201, 204):
         if role_name == "Member":
             member_used.add(ctx.author.id)
         else:
             join_history[user_id].append(now)
 
-        await ctx.send(
-            "✅ Joined successfully using authorized account."
-        )
-
+        await ctx.send("✅ Joined successfully")
     else:
-        await ctx.send(
-            f"❌ Failed\n```{response.text}```"
-        )
+        await ctx.send(f"❌ Failed\n```{res.text}```")
 
-# =========================
-# STOCK COMMAND
-# =========================
 
 @bot.command()
 async def stock(ctx):
-
-    stock_count = len(authorized_users)
-
-    embed = discord.Embed(
-        title="Member Stock",
-        description=f"📦 Authorized Members: **{stock_count}**",
+    await ctx.send(embed=discord.Embed(
+        title="Stock",
+        description=f"📦 Authorized: **{len(authorized_users)}**",
         color=0x5865F2
-    )
-
-    embed.set_footer(
-        text="Updates automatically when users authorize."
-    )
-
-    await ctx.send(embed=embed)
+    ))
 
 # =========================
-# WEB SERVER
+# FLASK APP (FIXED FOR RAILWAY)
 # =========================
 
-web = Flask(__name__)
+app = Flask(__name__)
 
-@web.route("/")
+@app.route("/")
 def home():
     return "Bot Running"
 
-@web.route("/health")
+@app.route("/health")
 def health():
     return "OK", 200
 
-@web.route("/callback")
+
+@app.route("/callback")
 def callback():
 
     code = request.args.get("code")
-
     if not code:
-        return "No code provided."
+        return "No code"
 
     data = {
         "client_id": CLIENT_ID,
         "client_secret": CLIENT_SECRET,
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": REDIRECT_URI,
-        "scope": "identify guilds.join"
+        "redirect_uri": REDIRECT_URI
     }
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded"
-    }
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
 
-    token_response = requests.post(
+    token = requests.post(
         "https://discord.com/api/oauth2/token",
         data=data,
         headers=headers
-    )
+    ).json()
 
-    token_json = token_response.json()
-
-    access_token = token_json.get("access_token")
-
+    access_token = token.get("access_token")
     if not access_token:
-        return f"Authorization failed.<br><br>{token_json}"
+        return "Auth failed"
 
-    user_response = requests.get(
+    user = requests.get(
         "https://discord.com/api/users/@me",
-        headers={
-            "Authorization": f"Bearer {access_token}"
-        }
-    )
+        headers={"Authorization": f"Bearer {access_token}"}
+    ).json()
 
-    user_json = user_response.json()
+    authorized_users[int(user["id"])] = access_token
 
-    user_id = int(user_json["id"])
+    return "Authorized successfully"
 
-    authorized_users[user_id] = access_token
-
-    return "Authorized Successfully"
-    
 # =========================
-# START BOT + WEB (RAILWAY SAFE)
+# STARTUP (FIXED ORDER)
 # =========================
+
+def run_bot():
+    bot.run(BOT_TOKEN)
+
 
 def run_web():
-    PORT = int(os.environ.get("PORT", 8080))
-    web.run(host="0.0.0.0", port=PORT)
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
 
-Thread(target=run_web).start()
 
-bot.run(BOT_TOKEN)
+# Flask MUST start first on Railway
+Thread(target=run_web, daemon=True).start()
+
+# Then bot
+run_bot()
