@@ -334,3 +334,7 @@ def start_bot_thread():
 # Start bot in a background thread
 bot_thread = Thread(target=start_bot_thread, daemon=True)
 bot_thread.start()
+
+if __name__ == '__main__':
+    # This line is needed for gunicorn to find the app
+    pass
