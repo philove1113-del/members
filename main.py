@@ -334,7 +334,7 @@ async def run_bot():
 def start_bot_thread():
     asyncio.run(run_bot())
 
-loop.create_task(run_bot)
+loop.create_task(run_bot())
 
 def run_loop():
     asyncio.set_event_loop(loop)
