@@ -282,18 +282,6 @@ def callback():
     You may now use ?idjoin SERVER_ID
     """
 
-# =========================
-# START FLASK
-# =========================
-
-def run_flask():
-    app.run(
-        host="0.0.0.0",
-        port=8080
-    )
-
-threading.Thread(target=run_flask).start()
-
 @tasks.loop(minutes=1)
 async def restock_task():
 
