@@ -335,6 +335,6 @@ def run_bot():
 if __name__ == "__main__":
     bot_thread = Thread(target=run_bot, daemon=True)
     bot_thread.start()
-    
+    print(f"Starting Waitress on port {PORT}")
     PORT = int(os.environ.get("PORT", 8080))
     serve(app, host="0.0.0.0", port=PORT)
