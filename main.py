@@ -334,7 +334,3 @@ def start_bot_thread():
 # Start bot in a background thread
 bot_thread = Thread(target=start_bot_thread, daemon=True)
 bot_thread.start()
-
-# Then run Flask normally
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
