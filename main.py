@@ -322,18 +322,33 @@ async def restock_task():
 # =========================
 # START BOT
 # =========================
-def start_bot_background():
-    try:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        loop.run_until_complete(bot.start(BOT_TOKEN))
-    except Exception as e:
-        print(f"Bot error: {e}")
-        
-# Start bot in background thread
-bot_thread = Thread(target=start_bot_background, daemon=True)
-bot_thread.start()
+def run_flask():
+    PORT = int(os.environ.get("PORT", 8080))
+
+    app.run(
+        host="0.0.0.0",
+        port=PORT
+    )
+
+def run_bot():
+    asyncio.run(bot.start(BOT_TOKEN))
+
+# Flask thread
+flask_thread = Thread(
+    target=run_flask,
+    daemon=True
+)
+
+flask_thread.start()
+
+# Main thread runs bot
+run_bot()
 
 # Start Flask
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    PORT = int(os.environ.get("PORT", 8080))
+
+    app.run(
+        host="0.0.0.0",
+        port=PORT
+    )
