@@ -336,7 +336,13 @@ async def restock_task():
 PORT = int(os.environ.get("PORT", 8080))
 
 def run_bot():
-    asyncio.run(bot.start(BOT_TOKEN))
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(
+        bot.start(BOT_TOKEN)
+    )
 
 if __name__ == "__main__":
 
