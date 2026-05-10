@@ -1,6 +1,6 @@
 import discord
 from discord.ext import commands
-from flask import Flask, request
+from flask import Flask, request, render_template
 import requests
 import asyncio
 from threading import Thread
