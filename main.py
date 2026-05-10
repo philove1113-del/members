@@ -10,6 +10,7 @@ import time
 from discord.ext import tasks
 from datetime import datetime
 import pytz
+from urllib.parse import quote
 
 # =========================
 # CONFIG
@@ -20,6 +21,11 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 REDIRECT_URI = "https://members-production-ea8f.up.railway.app/callback"
+
+ENCODED_REDIRECT_URI = quote(
+    REDIRECT_URI,
+    safe=""
+)
 
 RESTOCK_CHANNEL_ID = 1502766892186861568
 
@@ -66,7 +72,7 @@ async def login(ctx):
     oauth_url = (
         "https://discord.com/oauth2/authorize"
         f"?client_id={CLIENT_ID}"
-        f"&redirect_uri={REDIRECT_URI}"
+        f"&redirect_uri={ENCODED_REDIRECT_URI}"
         "&response_type=code"
         "&scope=identify%20guilds.join"
     )
@@ -320,28 +326,32 @@ async def restock_task():
         await asyncio.sleep(60)
 
 # =========================
-# START BOT
+# START BOT + FLASK
 # =========================
+
 def run_flask():
     PORT = int(os.environ.get("PORT", 8080))
 
     app.run(
         host="0.0.0.0",
-        port=PORT
+        port=PORT,
+        use_reloader=False
     )
 
-def run_bot():
-    asyncio.run(bot.start(BOT_TOKEN))
+async def main():
 
-# Flask thread
-flask_thread = Thread(
-    target=run_flask,
-    daemon=True
-)
+    # Start Flask in background
+    flask_thread = Thread(
+        target=run_flask,
+        daemon=True
+    )
 
-flask_thread.start()
+    flask_thread.start()
 
-# Main thread runs bot
-run_bot()
+    # Start Discord bot
+    await bot.start(BOT_TOKEN)
+
+# Start everything
+asyncio.run(main())
 
 
