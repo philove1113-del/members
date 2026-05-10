@@ -19,7 +19,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-REDIRECT_URI = "http://localhost:5000/callback"
+REDIRECT_URI = "https://members-production.up.railway.app/callback"
 
 RESTOCK_CHANNEL_ID = 1502766892186861568
 
