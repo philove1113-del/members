@@ -309,29 +309,13 @@ def callback():
     return "Authorized Successfully"
     
 # =========================
-# START WEB SERVER
+# START BOT + WEB (RAILWAY SAFE)
 # =========================
 
 def run_web():
-
     PORT = int(os.environ.get("PORT", 8080))
+    web.run(host="0.0.0.0", port=PORT)
 
-    print(f"Web server starting on port {PORT}")
-
-    serve(
-        web,
-        host="0.0.0.0",
-        port=PORT,
-        threads=8
-    )
-
-# Start web server in background thread
-web_thread = Thread(target=run_web)
-
-web_thread.start()
-
-# =========================
-# START DISCORD BOT
-# =========================
+Thread(target=run_web).start()
 
 bot.run(BOT_TOKEN)
