@@ -2,7 +2,6 @@ import discord
 from discord.ext import commands
 from flask import Flask, request
 import requests
-import asyncio
 from threading import Thread
 import os
 import time
@@ -11,6 +10,7 @@ from datetime import datetime
 import pytz
 from urllib.parse import quote
 from waitress import serve
+import asyncio
 
 # =========================
 # CONFIG
@@ -43,6 +43,10 @@ bot = commands.Bot(
     intents=intents
 )
 
+# =========================
+# STORAGE
+# =========================
+
 # user_id : access_token
 authorized_users = {}
 
@@ -59,6 +63,7 @@ member_used = set()
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+
     if not restock_task.is_running():
         restock_task.start()
 
@@ -85,6 +90,10 @@ async def login(ctx):
 
     await ctx.send(embed=embed)
 
+# =========================
+# BOT INVITE COMMAND
+# =========================
+
 @bot.command()
 async def botinvite(ctx):
 
@@ -104,7 +113,11 @@ async def botinvite(ctx):
     )
 
     await ctx.send(embed=embed)
-    
+
+# =========================
+# ROLE LIMITS
+# =========================
+
 def get_limit(member):
 
     role_names = [role.name for role in member.roles]
@@ -142,7 +155,6 @@ async def idjoin(ctx, server_id: int):
         await ctx.send("❌ Bot is not in that server.")
         return
 
-    # Find an authorized account
     if not authorized_users:
         await ctx.send("❌ No authorized users available.")
         return
@@ -156,7 +168,7 @@ async def idjoin(ctx, server_id: int):
     if user_id not in join_history:
         join_history[user_id] = []
 
-    # MEMBER ROLE = ONE LIFETIME USE
+    # Member role = one lifetime use
     if role_name == "Member":
 
         if ctx.author.id in member_used:
@@ -204,13 +216,17 @@ async def idjoin(ctx, server_id: int):
             join_history[user_id].append(now)
 
         await ctx.send(
-            f"✅ Joined successfully using authorized account."
+            "✅ Joined successfully using authorized account."
         )
 
     else:
         await ctx.send(
             f"❌ Failed\n```{response.text}```"
         )
+
+# =========================
+# STOCK COMMAND
+# =========================
 
 @bot.command()
 async def stock(ctx):
@@ -228,25 +244,28 @@ async def stock(ctx):
     )
 
     await ctx.send(embed=embed)
-        
+
 # =========================
-# FLASK
+# WEB SERVER
 # =========================
 
-app = Flask(__name__)
+web = Flask(__name__)
 
-@app.route("/")
+@web.route("/")
 def home():
     return "Bot Running"
 
-@app.route("/health")
+@web.route("/health")
 def health():
     return "OK", 200
 
-@app.route("/callback")
+@web.route("/callback")
 def callback():
 
     code = request.args.get("code")
+
+    if not code:
+        return "No code provided."
 
     data = {
         "client_id": CLIENT_ID,
@@ -272,7 +291,7 @@ def callback():
     access_token = token_json.get("access_token")
 
     if not access_token:
-        return "Authorization failed."
+        return f"Authorization failed.<br><br>{token_json}"
 
     user_response = requests.get(
         "https://discord.com/api/users/@me",
@@ -291,6 +310,10 @@ def callback():
     <h1>Authorized Successfully</h1>
     You may now use ?idjoin SERVER_ID
     """
+
+# =========================
+# RESTOCK TASK
+# =========================
 
 @tasks.loop(minutes=1)
 async def restock_task():
@@ -330,20 +353,14 @@ async def restock_task():
         await asyncio.sleep(60)
 
 # =========================
-# START BOT
+# START WEB SERVER
 # =========================
 
 def run_web():
 
-    from flask import Flask
-
-    web = Flask(__name__)
-
-    @web.route("/")
-    def home():
-        return "Bot Running"
-
     PORT = int(os.environ.get("PORT", 8080))
+
+    print(f"Web server starting on port {PORT}")
 
     serve(
         web,
@@ -351,9 +368,16 @@ def run_web():
         port=PORT
     )
 
-# Start tiny webserver
-web_thread = Thread(target=run_web)
+# Start web server in background thread
+web_thread = Thread(
+    target=run_web,
+    daemon=True
+)
+
 web_thread.start()
 
-# Run Discord bot on main thread
+# =========================
+# START DISCORD BOT
+# =========================
+
 bot.run(BOT_TOKEN)
