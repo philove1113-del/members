@@ -322,36 +322,22 @@ async def restock_task():
 # =========================
 # START BOT
 # =========================
-
-# Instead of: bot.run(BOT_TOKEN)
-
 loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
 
 async def run_bot():
     await bot.start(BOT_TOKEN)
-
-def start_bot_thread():
-    asyncio.run(run_bot())
-
-loop.create_task(run_bot())
 
 def run_loop():
     asyncio.set_event_loop(loop)
     loop.run_forever()
 
-# Start bot in a background thread
-bot_thread = Thread(target=start_bot_thread, daemon=True)
+# Start bot in background thread
+bot_thread = Thread(target=run_loop, daemon=True)
 bot_thread.start()
 
+# Schedule bot startup on the loop
+time.sleep(0.1)  # Give thread time to start
+asyncio.run_coroutine_threadsafe(run_bot(), loop)
 
-# Keep main thread alive for gunicorn
-try:
-    while True:
-        time.sleep(1)
-except KeyboardInterrupt:
-    pass
-    
 if __name__ == '__main__':
-    # This line is needed for gunicorn to find the app
     pass
