@@ -21,7 +21,7 @@ CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 REDIRECT_URI = "http://localhost:5000/callback"
 
-RESTOCK_CHANNEL_ID = 123456789012345678
+RESTOCK_CHANNEL_ID = 1502766892186861568
 
 # =========================
 # INTENTS
@@ -205,6 +205,23 @@ async def idjoin(ctx, server_id: int):
         await ctx.send(
             f"❌ Failed\n```{response.text}```"
         )
+
+@bot.command()
+async def stock(ctx):
+
+    stock_count = len(authorized_users)
+
+    embed = discord.Embed(
+        title="Member Stock",
+        description=f"📦 Authorized Members: **{stock_count}**",
+        color=0x5865F2
+    )
+
+    embed.set_footer(
+        text="Updates automatically when users authorize."
+    )
+
+    await ctx.send(embed=embed)
         
 # =========================
 # FLASK
@@ -297,7 +314,8 @@ async def restock_task():
             title="Restock",
             description=(
                 f"The bot has restocked.\n\n"
-                f"**{stock_count}** authorized members are now available."
+                f"**{stock_count}** authorized members are now available.\n\n"
+                f"React to this message for more restocks."
             ),
             color=0x57F287
         )
@@ -306,7 +324,9 @@ async def restock_task():
             text="Automatic Daily Restock"
         )
 
-        await channel.send(embed=embed)
+        message = await channel.send(embed=embed)
+
+        await message.add_reaction("✅")
 
         # Prevent duplicate sends
         await asyncio.sleep(60)
