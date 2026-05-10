@@ -64,8 +64,11 @@ member_used = set()
 async def on_ready():
     print(f"Logged in as {bot.user}")
 
-    if not restock_task.is_running():
-        restock_task.start()
+    try:
+        if not restock_task.is_running():
+            restock_task.start()
+    except NameError:
+        print("restock_task not loaded yet")
 
 # =========================
 # LOGIN COMMAND
