@@ -336,8 +336,12 @@ def start_bot_background():
     except Exception as e:
         print(f"Bot error: {e}")
 
-bot_thread = Thread(target=start_bot_background, daemon=True)
-bot_thread.start()
+# Start bot in background thread (non-blocking)
+try:
+    bot_thread = Thread(target=start_bot_background, daemon=True)
+    bot_thread.start()
+except Exception as e:
+    print(f"Failed to start bot thread: {e}")
 
 if __name__ == '__main__':
     pass
