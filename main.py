@@ -10,7 +10,7 @@ from discord.ext import tasks
 from datetime import datetime
 import pytz
 from urllib.parse import quote
-from waitress import server
+from waitress import serve
 
 # =========================
 # CONFIG
