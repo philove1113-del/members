@@ -237,7 +237,17 @@ app = Flask(__name__)
 
 @app.route("/")
 def home():
-    return "Bot Running"
+    try:
+        return render_template("index.html")
+    except Exception as e:
+        print(f"Error in home: {e}")
+        import traceback
+        traceback.print_exc()
+        return f"Error: {e}", 500
+
+@app.route("/health")
+def health():
+    return "OK", 200
 
 @app.route("/callback")
 def callback():
