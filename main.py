@@ -324,9 +324,14 @@ async def restock_task():
 # =========================
 loop = None
 bot_thread = None
+bot_started = False
 
 def start_bot():
-    global loop, bot_thread
+    global loop, bot_thread, bot_started
+    if bot_started:
+        return
+    bot_started = True
+    
     loop = asyncio.new_event_loop()
     
     async def run_bot():
@@ -342,12 +347,10 @@ def start_bot():
     time.sleep(0.1)
     asyncio.run_coroutine_threadsafe(run_bot(), loop)
 
-# Start bot when Flask app starts
+# Start bot in background thread on first request
 @app.before_request
 def before_first_request():
-    global bot_thread
-    if bot_thread is None:
-        start_bot()
+    Thread(target=start_bot, daemon=True).start()
 
 if __name__ == '__main__':
     pass
