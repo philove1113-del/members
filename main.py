@@ -330,14 +330,11 @@ async def restock_task():
 # =========================
 
 def run_flask():
-
     PORT = int(os.environ.get("PORT", 8080))
-
-    serve(
-        app,
-        host="0.0.0.0",
-        port=PORT
-    )
+    try:
+        serve(app, host="0.0.0.0", port=PORT)
+    except Exception as e:
+        print(f"Flask error: {e}")
 
 async def main():
 
