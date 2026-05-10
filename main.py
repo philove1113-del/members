@@ -341,15 +341,3 @@ bot_thread.start()
 
 if __name__ == '__main__':
     pass
-
-bot_thread = Thread(target=start_bot_background, daemon=True)
-bot_thread.start()
-
-if __name__ == '__main__':
-    pass
-
-bot_thread = Thread(target=start_bot_background, daemon=True)
-bot_thread.start()
-
-if __name__ == '__main__':
-    pass
