@@ -330,7 +330,6 @@ def start_bot_background():
         async def run_bot():
             await bot.start(BOT_TOKEN)
         
-        # Schedule bot to start but don't block
         asyncio.run_coroutine_threadsafe(run_bot(), loop)
         loop.run_forever()
     except Exception as e:
@@ -342,6 +341,3 @@ try:
     bot_thread.start()
 except Exception as e:
     print(f"Failed to start bot thread: {e}")
-
-if __name__ == '__main__':
-    pass
