@@ -7,6 +7,10 @@ import threading
 from threading import Thread
 import os
 import time
+from discord.ext import tasks
+from datetime import datetime
+import pytz
+
 # =========================
 # CONFIG
 # =========================
@@ -16,6 +20,8 @@ CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
 REDIRECT_URI = "http://localhost:5000/callback"
+
+RESTOCK_CHANNEL_ID = 123456789012345678
 
 # =========================
 # INTENTS
@@ -47,6 +53,8 @@ member_used = set()
 @bot.event
 async def on_ready():
     print(f"Logged in as {bot.user}")
+    if not restock_task.is_running():
+        restock_task.start()
 
 # =========================
 # LOGIN COMMAND
@@ -268,6 +276,40 @@ def run_flask():
     )
 
 threading.Thread(target=run_flask).start()
+
+@tasks.loop(minutes=1)
+async def restock_task():
+
+    timezone = pytz.timezone("America/Los_Angeles")
+    now = datetime.now(timezone)
+
+    # 7:30 AM PDT/PST
+    if now.hour == 7 and now.minute == 30:
+
+        channel = bot.get_channel(RESTOCK_CHANNEL_ID)
+
+        if channel is None:
+            return
+
+        stock_count = len(authorized_users)
+
+        embed = discord.Embed(
+            title="Restock",
+            description=(
+                f"The bot has restocked.\n\n"
+                f"**{stock_count}** authorized members are now available."
+            ),
+            color=0x57F287
+        )
+
+        embed.set_footer(
+            text="Automatic Daily Restock"
+        )
+
+        await channel.send(embed=embed)
+
+        # Prevent duplicate sends
+        await asyncio.sleep(60)
 
 # =========================
 # START BOT
