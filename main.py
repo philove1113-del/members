@@ -195,7 +195,7 @@ async def stock(ctx):
 # =========================
 
 app = Flask(__name__)
-app.config['SERVER_NAME'] = None
+app.config['SERVER_NAME'] = 'api.doughauth.store'
 
 @app.route("/")
 def home():
