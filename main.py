@@ -195,6 +195,7 @@ async def stock(ctx):
 # =========================
 
 app = Flask(__name__)
+app.config['SERVER_NAME'] = None
 
 @app.route("/")
 def home():
