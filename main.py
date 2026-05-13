@@ -17,7 +17,7 @@ BOT_TOKEN = os.getenv("BOT_TOKEN")
 CLIENT_ID = os.getenv("CLIENT_ID")
 CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 
-REDIRECT_URI = "https://members-production-7b5d.up.railway.app/"
+REDIRECT_URI = "https://members-production-7b5d.up.railway.app"
 ENCODED_REDIRECT_URI = quote(REDIRECT_URI, safe="")
 
 RESTOCK_CHANNEL_ID = 1502766892186861568
