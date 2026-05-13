@@ -140,46 +140,128 @@ async def idjoin(ctx, server_id: int):
     role_name, limit = get_limit(ctx.author)
 
     if limit == 0:
-        return await ctx.send("❌ No valid role.")
+        await ctx.send("❌ You do not have a valid role.")
+        return
+
+    guild = bot.get_guild(server_id)
+
+    if guild is None:
+        await ctx.send("❌ Bot is not in that server.")
+        return
 
     if not authorized_users:
-        return await ctx.send("❌ No authorized users.")
-
-    user_id = next(iter(authorized_users))
-    token = authorized_users[user_id]
+        await ctx.send("❌ No authorized users available.")
+        return
 
     now = time.time()
-    join_history.setdefault(user_id, [])
 
+    # =========================
+    # FIND VALID AUTHORIZED USER
+    # =========================
+
+    available_users = []
+
+    for user_id, access_token in authorized_users.items():
+
+        # Skip if already in server
+        if guild.get_member(user_id):
+            continue
+
+        available_users.append((user_id, access_token))
+
+    # No available users
+    if not available_users:
+
+        if len(authorized_users) == 1:
+            await ctx.send(
+                "❌ The only authorized account is already in that server."
+            )
+        else:
+            await ctx.send(
+                "❌ All authorized accounts are already in that server."
+            )
+
+        return
+
+    # Randomly pick one
+    user_id, access_token = random.choice(available_users)
+
+    # =========================
+    # LIMIT CHECKS
+    # =========================
+
+    if user_id not in join_history:
+        join_history[user_id] = []
+
+    # Member role = one lifetime use
     if role_name == "Member":
+
         if ctx.author.id in member_used:
-            return await ctx.send("❌ One-time use only.")
+            await ctx.send(
+                "❌ Member role can only use ?idjoin once ever."
+            )
+            return
+
     else:
-        join_history[user_id] = [t for t in join_history[user_id] if now - t < 86400]
+
+        # Remove entries older than 24h
+        join_history[user_id] = [
+            t for t in join_history[user_id]
+            if now - t < 86400
+        ]
 
         if len(join_history[user_id]) >= limit:
-            return await ctx.send("❌ Daily limit reached.")
+            await ctx.send(
+                f"❌ Daily limit reached ({limit}/{limit})"
+            )
+            return
 
-    url = f"https://discord.com/api/v10/guilds/{server_id}/members/{user_id}"
+    # =========================
+    # ATTEMPT JOIN
+    # =========================
 
-    res = requests.put(
-        url,
-        headers={
-            "Authorization": f"Bot {BOT_TOKEN}",
-            "Content-Type": "application/json"
-        },
-        json={"access_token": token}
+    url = (
+        f"https://discord.com/api/v10/"
+        f"guilds/{server_id}/members/{user_id}"
     )
 
-    if res.status_code in (201, 204):
+    headers = {
+        "Authorization": f"Bot {BOT_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "access_token": access_token
+    }
+
+    response = requests.put(
+        url,
+        headers=headers,
+        json=data
+    )
+
+    # =========================
+    # SUCCESS
+    # =========================
+
+    if response.status_code in [201, 204]:
+
         if role_name == "Member":
             member_used.add(ctx.author.id)
         else:
             join_history[user_id].append(now)
 
-        await ctx.send("✅ Joined successfully")
+        await ctx.send(
+            f"✅ Successfully joined authorized account "
+            f"`{user_id}` to the server."
+        )
+
     else:
-        await ctx.send(f"❌ Failed\n```{res.text}```")
+
+        await ctx.send(
+            f"❌ Failed\n```{response.text}```"
+        )
+
 
 
 @bot.command()
